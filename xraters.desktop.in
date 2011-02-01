@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Xraters
+Comment=Xraters application
+Categories=GNOME;Utility;
+Exec=xraters
+Icon=xraters
+Terminal=false
+Type=Application

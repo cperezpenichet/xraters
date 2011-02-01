@@ -1,0 +1,8 @@
+<glade-catalog name="xraters_window" domain="glade-3" 
+               depends="gtk+" version="1.0">
+  <glade-widget-classes>
+    <glade-widget-class title="Xraters Window" name="XratersWindow" 
+                        generic-name="XratersWindow" parent="GtkWindow"
+                        icon-name="widget-gtk-window"/>
+  </glade-widget-classes>
+</glade-catalog>
