@@ -4,8 +4,10 @@
   <!-- interface-requires preferences_xraters_dialog 1.0 -->
   <!-- interface-naming-policy project-wide -->
   <object class="PreferencesXratersDialog" id="preferences_xraters_dialog">
+    <property name="events">GDK_FOCUS_CHANGE_MASK | GDK_STRUCTURE_MASK</property>
     <property name="border_width">5</property>
     <property name="title" translatable="yes">Xraters Preferences</property>
+    <property name="window_position">center</property>
     <property name="icon">../media/icon.png</property>
     <property name="type_hint">utility</property>
     <property name="skip_taskbar_hint">True</property>
@@ -149,10 +151,10 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="invisible_char">•</property>
+                                <property name="adjustment">adjustmentFireSpin</property>
                                 <property name="climb_rate">1</property>
                                 <property name="snap_to_ticks">True</property>
                                 <property name="numeric">True</property>
-                                <property name="update_policy">if-valid</property>
                               </object>
                               <packing>
                                 <property name="position">0</property>
@@ -164,6 +166,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="invisible_char">•</property>
+                                <property name="adjustment">adjustmentPhotoSpin</property>
                                 <property name="climb_rate">1</property>
                                 <property name="snap_to_ticks">True</property>
                                 <property name="numeric">True</property>
@@ -178,6 +181,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="invisible_char">•</property>
+                                <property name="adjustment">adjustmentErrorSpin</property>
                                 <property name="climb_rate">1</property>
                                 <property name="snap_to_ticks">True</property>
                                 <property name="numeric">True</property>
@@ -225,7 +229,7 @@
                           <object class="GtkLabel" id="label10">
                             <property name="visible">True</property>
                             <property name="xalign">0</property>
-                            <property name="label" translatable="yes">_Output directory: </property>
+                            <property name="label" translatable="yes">Output _directory: </property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">filechooser_output</property>
                           </object>
@@ -278,11 +282,23 @@
             <property name="visible">True</property>
             <property name="layout_style">end</property>
             <child>
-              <placeholder/>
+              <object class="GtkButton" id="button_Cancel">
+                <property name="label">gtk-cancel</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
+                <signal name="clicked" handler="cancel"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">0</property>
+              </packing>
             </child>
             <child>
-              <object class="GtkButton" id="button_Close">
-                <property name="label">gtk-close</property>
+              <object class="GtkButton" id="button_Ok">
+                <property name="label">gtk-ok</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">False</property>
@@ -305,13 +321,23 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="-5">button_Close</action-widget>
+      <action-widget response="-6">button_Cancel</action-widget>
+      <action-widget response="-5">button_Ok</action-widget>
     </action-widgets>
   </object>
-  <object class="GtkAdjustment" id="adjustment1">
+  <object class="GtkAdjustment" id="adjustmentFireSpin">
+    <property name="upper">1000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">100</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustmentPhotoSpin">
+    <property name="upper">1000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">1000</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustmentErrorSpin">
     <property name="upper">100</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
-    <property name="page_size">10</property>
   </object>
 </interface>

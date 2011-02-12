@@ -48,8 +48,8 @@ class XratersWindow(gtk.Window):
         self.builder.connect_signals(self)
 
         #uncomment the following code to read in preferences at start up
-        #dlg = PreferencesXratersDialog.NewPreferencesXratersDialog()
-        #self.preferences = dlg.get_preferences()
+        dlg = PreferencesXratersDialog.NewPreferencesXratersDialog()
+        self.preferences = dlg.get_preferences()
 
         #code for other initialization actions should be added here
 

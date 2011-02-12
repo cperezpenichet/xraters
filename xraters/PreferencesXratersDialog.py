@@ -47,6 +47,17 @@ class PreferencesXratersDialog(gtk.Dialog):
         self.__record_type = "http://wiki.ubuntu.com/Quickly/RecordTypes/Xraters/Preferences"
         self.__preferences = self.get_preferences()
         #TODO:code for other initialization actions should be added here
+        
+        self.__entryWiiAddress = self.builder.get_object("entry_WiiAddress")
+        self.__entryWiiAddress.set_text(self.__preferences['wiiAddress'])
+        self.__spinFireDelay = self.builder.get_object("spin_FireDelay")
+        self.__spinFireDelay.set_value(self.__preferences['fireDelay'])
+        self.__spinPhotoDelay = self.builder.get_object("spin_PhotoDelay")
+        self.__spinPhotoDelay.set_value(self.__preferences['photoDelay'])
+        self.__spinError = self.builder.get_object("spin_Error")
+        self.__spinError.set_value(self.__preferences['Error'])
+        self.__filechooserOutput = self.builder.get_object("filechooser_output")
+        self.__filechooserOutput.set_filename(self.__preferences['outputDir'])
 
     def get_preferences(self):
         """get_preferences  -returns a dictionary object that contain
@@ -63,7 +74,12 @@ class PreferencesXratersDialog(gtk.Dialog):
     def __load_preferences(self):
         #TODO: add prefernces to the self.__preferences dict
         #default preferences that will be overwritten if some are saved
-        self.__preferences = {"record_type":self.__record_type}
+        self.__preferences = {"record_type":self.__record_type,
+                              "wiiAddress": "00:17:AB:39:49:98",
+                              "fireDelay": 10,
+                              "photoDelay": 10,
+                              "Error": 10,
+                              "outputDir": "."}
         
         results = self.__database.get_records(record_type=self.__record_type, create_view=True)
        
@@ -74,6 +90,8 @@ class PreferencesXratersDialog(gtk.Dialog):
         else:
             self.__preferences = results.rows[0].value
             self.__key = results.rows[0].value["_id"]
+            
+        
         
     def __save_preferences(self):
         self.__database.update_fields(self.__key, self.__preferences)
@@ -85,6 +103,12 @@ class PreferencesXratersDialog(gtk.Dialog):
 
         #make any updates to self.__preferences here
         #self.__preferences["preference1"] = "value2"
+                
+        self.__preferences['wiiAddress'] = self.__entryWiiAddress.get_text();
+        self.__preferences['fireDelay'] = self.__spinFireDelay.get_value_as_int();
+        self.__preferences['photoDelay'] = self.__spinPhotoDelay.get_value_as_int();
+        self.__preferences['Error'] = self.__spinError.get_value_as_int();
+        self.__preferences['outputDir'] = self.__filechooserOutput.get_filename();
         self.__save_preferences()
 
     def cancel(self, widget, data=None):
