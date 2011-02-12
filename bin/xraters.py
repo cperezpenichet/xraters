@@ -7,6 +7,7 @@
 import sys
 import os
 import gtk
+from gtk.gdk import threads_init
 
 # Check if we are working in the source tree or from the installed 
 # package and mangle the python path accordingly
@@ -20,6 +21,7 @@ else:
 sys.path.insert(0, os.path.dirname(fullPath))
 
 from xraters import AboutXratersDialog, PreferencesXratersDialog
+from xraters.WiiConnectionMaker import WiiConnectionMaker
 from xraters.xratersconfig import getdatapath
 
 class XratersWindow(gtk.Window):
@@ -52,6 +54,8 @@ class XratersWindow(gtk.Window):
         self.preferences = dlg.get_preferences()
 
         #code for other initialization actions should be added here
+        self.statusBar = self.builder.get_object("statusbar")
+        self.__menuConnect = self.builder.get_object("menuitemConnect")
 
     def about(self, widget, data=None):
         """about - display the about box for xraters """
@@ -77,6 +81,19 @@ class XratersWindow(gtk.Window):
         #clean up code for saving application state should be added here
 
         gtk.main_quit()
+        
+    def __connectCallback(self, connectionMaker):
+        if connectionMaker.connected:
+            self.__connected = True
+        else:
+            self.__menuConnect.set_sensitive(True)
+    
+    def on_wiiConnect(self, widget, data=None):
+        self.__menuConnect.set_sensitive(False)
+        connectionMaker = WiiConnectionMaker(self.preferences['wiiAddress'],
+                                             self.statusBar,
+                                             self.__connectCallback)
+        connectionMaker.start()
 
 def NewXratersWindow():
     """NewXratersWindow - returns a fully instantiated
@@ -110,5 +127,6 @@ if __name__ == "__main__":
     #run the application
     window = NewXratersWindow()
     window.show()
+    threads_init()
     gtk.main()
 
