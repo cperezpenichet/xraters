@@ -53,7 +53,8 @@ class XratersWindow(gtk.Window):
         self.__yAcc = list()
         self.__zAcc = list()
         self.__time = list()
-        self.__xlim = time.time()
+        self.__startTime = time.time()
+        self.__xlim = 2
 
     def finish_initializing(self, builder):
         """finish_initalizing should be called after parsing the ui definition
@@ -101,7 +102,7 @@ class XratersWindow(gtk.Window):
         response = prefs.run()
         if response == gtk.RESPONSE_OK:
             #make any updates based on changed preferences here
-            pass
+            self.preferences = prefs.get_preferences()
         prefs.destroy()
 
     def quit(self, widget, data=None):
@@ -111,7 +112,6 @@ class XratersWindow(gtk.Window):
     def on_destroy(self, widget, data=None):
         """on_destroy - called when the XratersWindow is close. """
         #clean up code for saving application state should be added here
-
         gtk.main_quit()
         
     def on_wiiConnect(self, widget, data=None):
@@ -127,6 +127,7 @@ class XratersWindow(gtk.Window):
             self.__wiiMote = connectionMaker.wiiMote
             self.__timestart = time.time()
             gobject.timeout_add(9, self.__getAcc)
+            gobject.timeout_add(45, self.__drawAcc)
         else:
             self.__menuConnect.set_sensitive(True)    
     
@@ -143,21 +144,22 @@ class XratersWindow(gtk.Window):
                 # Normalize data using calibration info from the controller
                 for i in range(3):
                     self.__acc[i] = 4*float(msg[1][i]-self.__acc_cal[0][i])/(self.__acc_cal[1][i]-self.__acc_cal[0][i])
-        self.__time.append(time.time())
+        self.__time.append(time.time()-self.__startTime)
         self.__xAcc.append(self.__acc[0])
         self.__yAcc.append(self.__acc[1])
         self.__zAcc.append(self.__acc[2])
-        if (self.__xlim - self.__time[0] < 5):
-            if (self.__time[-1] > self.__xlim):
-                self.__xlim = time.time() + 2
-                self.__accAxis.set_xlim(self.__time[0], self.__xlim)
-                
-                gobject.idle_add(self.__accCanvas.draw)
-        else:
-            if (self.__time[-1] > self.__xlim):
-                self.__xlim = time.time() + 2
-                self.__accAxis.set_xlim(self.__xlim-5, self.__xlim)
-                gobject.idle_add(self.__accCanvas.draw)
+        if (len(self.__time) > 600):
+            self.__time.pop(0)
+            self.__xAcc.pop(0)
+            self.__yAcc.pop(0)
+            self.__zAcc.pop(0)
+        return True
+
+    def __drawAcc(self):
+        if (self.__time[-1] > self.__xlim or len(self.__time)==0):
+            self.__xlim = time.time() - self.__startTime + 2
+            self.__accAxis.set_xlim(self.__time[0]+2, self.__xlim)
+            gobject.idle_add(self.__accCanvas.draw)
         if self.__background != None:
             self.__accCanvas.restore_region(self.__background)
         self.__line[0].set_data(self.__time, self.__xAcc)
@@ -167,7 +169,6 @@ class XratersWindow(gtk.Window):
         self.__accAxis.draw_artist(self.__line[1])
         self.__accAxis.draw_artist(self.__line[2])
         self.__accCanvas.blit(self.__accAxis.bbox)
-
         return True
 
 def NewXratersWindow():
