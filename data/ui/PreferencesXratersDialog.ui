@@ -32,12 +32,32 @@
                         <property name="xalign">0</property>
                         <property name="left_padding">20</property>
                         <child>
-                          <object class="GtkLabel" id="label6">
+                          <object class="GtkVBox" id="vbox2">
                             <property name="visible">True</property>
-                            <property name="xalign">0</property>
-                            <property name="label" translatable="yes">_Address: </property>
-                            <property name="use_underline">True</property>
-                            <property name="mnemonic_widget">entry_WiiAddress</property>
+                            <child>
+                              <object class="GtkLabel" id="label6">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">_Address: </property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">entry_WiiAddress</property>
+                              </object>
+                              <packing>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="label1">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">Acc _Range: </property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">combobox_AccRange</property>
+                              </object>
+                              <packing>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
                           </object>
                         </child>
                       </object>
@@ -51,16 +71,34 @@
                         <property name="visible">True</property>
                         <property name="xalign">0</property>
                         <child>
-                          <object class="GtkEntry" id="entry_WiiAddress">
+                          <object class="GtkVBox" id="vbox5">
                             <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="invisible_char">•</property>
+                            <child>
+                              <object class="GtkEntry" id="entry_WiiAddress">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="invisible_char">•</property>
+                                <property name="activates_default">True</property>
+                              </object>
+                              <packing>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkComboBox" id="combobox_AccRange">
+                                <property name="visible">True</property>
+                                <property name="model">liststore_AccRange</property>
+                              </object>
+                              <packing>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
                           </object>
                         </child>
                       </object>
                       <packing>
                         <property name="expand">False</property>
-                        <property name="padding">72</property>
+                        <property name="padding">58</property>
                         <property name="position">1</property>
                       </packing>
                     </child>
@@ -151,6 +189,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="invisible_char">•</property>
+                                <property name="activates_default">True</property>
                                 <property name="adjustment">adjustmentFireSpin</property>
                                 <property name="climb_rate">1</property>
                                 <property name="snap_to_ticks">True</property>
@@ -166,6 +205,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="invisible_char">•</property>
+                                <property name="activates_default">True</property>
                                 <property name="adjustment">adjustmentPhotoSpin</property>
                                 <property name="climb_rate">1</property>
                                 <property name="snap_to_ticks">True</property>
@@ -181,6 +221,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="invisible_char">•</property>
+                                <property name="activates_default">True</property>
                                 <property name="adjustment">adjustmentErrorSpin</property>
                                 <property name="climb_rate">1</property>
                                 <property name="snap_to_ticks">True</property>
@@ -301,7 +342,9 @@
                 <property name="label">gtk-ok</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="receives_default">False</property>
+                <property name="can_default">True</property>
+                <property name="has_default">True</property>
+                <property name="receives_default">True</property>
                 <property name="use_stock">True</property>
                 <signal name="clicked" handler="ok"/>
               </object>
@@ -340,4 +383,5 @@
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
+  <object class="GtkListStore" id="liststore_AccRange"/>
 </interface>

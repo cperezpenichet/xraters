@@ -80,7 +80,8 @@ class XratersWindow(gtk.Window):
         self.__line = self.__accAxis.plot(self.__time, self.__xAcc,
                                           self.__time, self.__yAcc,
                                           self.__time, self.__zAcc, animated=True)
-        self.__accAxis.set_ylim(-4, 4)
+        self.__accAxis.set_ylim(-self.preferences['accRange'], 
+                                self.preferences['accRange'])
         self.__accCanvas = FigureCanvas(self.__accFigure)
         self.__accCanvas.mpl_connect("draw_event", self.__upd_background)
         self.__background = self.__accCanvas.copy_from_bbox(self.__accAxis.bbox)
@@ -103,6 +104,9 @@ class XratersWindow(gtk.Window):
         if response == gtk.RESPONSE_OK:
             #make any updates based on changed preferences here
             self.preferences = prefs.get_preferences()
+            self.__accAxis.set_ylim(-self.preferences['accRange'], 
+                                    self.preferences['accRange'])
+            self.__accCanvas.draw()
         prefs.destroy()
 
     def quit(self, widget, data=None):
@@ -143,7 +147,8 @@ class XratersWindow(gtk.Window):
             if msg[0] == cwiid.MESG_ACC:
                 # Normalize data using calibration info from the controller
                 for i in range(3):
-                    self.__acc[i] = 4*float(msg[1][i]-self.__acc_cal[0][i])/(self.__acc_cal[1][i]-self.__acc_cal[0][i])
+                    self.__acc[i] = float(msg[1][i]-self.__acc_cal[0][i])/(self.__acc_cal[1][i]-self.__acc_cal[0][i])
+                    self.__acc[i] *= self.preferences['accRange']
         self.__time.append(time.time()-self.__startTime)
         self.__xAcc.append(self.__acc[0])
         self.__yAcc.append(self.__acc[1])

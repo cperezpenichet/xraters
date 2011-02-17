@@ -14,6 +14,11 @@ from xraters.xratersconfig import getdatapath
 class PreferencesXratersDialog(gtk.Dialog):
     __gtype_name__ = "PreferencesXratersDialog"
     prefernces = {}
+    __ranges = [["+-2g", 2],
+                ["+-4g", 4],
+                ["+-6g", 6],
+                ["+-8g", 8],
+                ]
 
     def __init__(self):
         """__init__ - This function is typically not called directly.
@@ -58,6 +63,16 @@ class PreferencesXratersDialog(gtk.Dialog):
         self.__spinError.set_value(self.__preferences['Error'])
         self.__filechooserOutput = self.builder.get_object("filechooser_output")
         self.__filechooserOutput.set_filename(self.__preferences['outputDir'])
+        
+        self.__comboAccRange = self.builder.get_object("combobox_AccRange")
+        self.__liststoreAccRange = gtk.ListStore(str, int)
+        for l in self.__ranges:
+            self.__liststoreAccRange.append(l)
+        self.__comboAccRange.set_model(self.__liststoreAccRange)
+        rend = gtk.CellRendererText()
+        self.__comboAccRange.pack_start(rend)
+        self.__comboAccRange.add_attribute(rend, "text", 0)
+        self.__comboAccRange.set_active(self.__preferences['accRangeIndex'])
 
     def get_preferences(self):
         """get_preferences  -returns a dictionary object that contain
@@ -79,7 +94,9 @@ class PreferencesXratersDialog(gtk.Dialog):
                               "fireDelay": 10,
                               "photoDelay": 10,
                               "Error": 10,
-                              "outputDir": "."}
+                              "outputDir": ".",
+                              "accRange": 1,
+                              "accRangeIndex": 0}
         
         results = self.__database.get_records(record_type=self.__record_type, create_view=True)
        
@@ -109,6 +126,9 @@ class PreferencesXratersDialog(gtk.Dialog):
         self.__preferences['photoDelay'] = self.__spinPhotoDelay.get_value_as_int();
         self.__preferences['Error'] = self.__spinError.get_value_as_int();
         self.__preferences['outputDir'] = self.__filechooserOutput.get_filename();
+        index = self.__comboAccRange.get_active()
+        self.__preferences['accRange'] = self.__liststoreAccRange[index][1]
+        self.__preferences['accRangeIndex'] = index
         self.__save_preferences()
 
     def cancel(self, widget, data=None):
