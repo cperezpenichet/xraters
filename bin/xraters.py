@@ -14,6 +14,7 @@ import gtk
 import os
 import sys
 import time
+import csv
 
 # Check if we are working in the source tree or from the installed 
 # package and mangle the python path accordingly
@@ -49,12 +50,15 @@ class XratersWindow(gtk.Window):
         self.__acc = [0, 0, 0]
         self.__connected = False
         self.__wiiMote = None
+        self.__resetData()
+
+    def __resetData(self):
         self.__xAcc = list()
         self.__yAcc = list()
         self.__zAcc = list()
         self.__time = list()
         self.__startTime = time.time()
-        self.__xlim = 2
+        self.__xlim = 0.1
 
     def finish_initializing(self, builder):
         """finish_initalizing should be called after parsing the ui definition
@@ -72,7 +76,9 @@ class XratersWindow(gtk.Window):
 
         #code for other initialization actions should be added here
         self.statusBar = self.builder.get_object("statusbar")
-        self.__menuConnect = self.builder.get_object("menuitemConnect")
+        self.__actionConnect = self.builder.get_object("actionWiiConnect")
+        self.__actionDisconnect = self.builder.get_object("actionDisconnect")
+        self.__actionSave = self.builder.get_object("actionSave")
         self.__vboxMain = self.builder.get_object("vboxMain")
         
         self.__accFigure = Figure(figsize=(8,6), dpi=72)
@@ -119,26 +125,47 @@ class XratersWindow(gtk.Window):
         gtk.main_quit()
         
     def on_wiiConnect(self, widget, data=None):
-        self.__menuConnect.set_sensitive(False)
+        self.__actionConnect.set_sensitive(False)
         connectionMaker = WiiConnectionMaker(self.preferences['wiiAddress'],
                                              self.statusBar,
                                              self.__connectCallback)
         connectionMaker.start()
         
+    def on_wiiDisconnect(self, widget, data=None):
+        self.__wiiMote.close()
+        self.__connected = False
+        self.__actionDisconnect.set_sensitive(False)
+        self.__actionConnect.set_sensitive(True)
+        self.__actionSave.set_sensitive(True)
+        
+    def save(self, widget, data=None):
+        file = open("data.dat", 'wb')
+        writer = csv.writer(file, 'excel-tab')
+        for i in range(len(self.__time)):
+            writer.writerow([self.__time[i],
+                             self.__xAcc[i],
+                             self.__yAcc[i],
+                             self.__zAcc[i]])
+        file.close()
+        
     def __connectCallback(self, connectionMaker):
         if connectionMaker.connected:
             self.__connected = True
             self.__wiiMote = connectionMaker.wiiMote
-            self.__timestart = time.time()
+            self.__resetData()
             gobject.timeout_add(9, self.__getAcc)
             gobject.timeout_add(45, self.__drawAcc)
+            self.__actionDisconnect.set_sensitive(True)
+            self.__actionSave.set_sensitive(False)
         else:
-            self.__menuConnect.set_sensitive(True)    
+            self.__actionConnect.set_sensitive(True)    
     
     def __upd_background(self, event):
         self.__background = self.__accCanvas.copy_from_bbox(self.__accAxis.bbox)
     
     def __getAcc(self):
+        if not self.__connected:
+            return False
         messages = None
         while messages == None:
             messages = self.__wiiMote.get_mesg()
@@ -161,6 +188,8 @@ class XratersWindow(gtk.Window):
         return True
 
     def __drawAcc(self):
+        if not self.__connected:
+            return False
         if (self.__time[-1] > self.__xlim or len(self.__time)==0):
             self.__xlim = time.time() - self.__startTime + 2
             self.__accAxis.set_xlim(self.__time[0]+2, self.__xlim)
