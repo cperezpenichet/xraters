@@ -90,6 +90,8 @@ class XratersWindow(gtk.Window):
                                           self.__time, self.__zAcc, animated=True)
         self.__accAxis.set_ylim(-self.preferences['accRange'], 
                                 self.preferences['accRange'])
+        self.__accAxis.set_xlabel("time (s)")
+        self.__accAxis.set_ylabel("gravity (g)")
         self.__accCanvas = FigureCanvas(self.__accFigure)
         self.__accCanvas.mpl_connect("draw_event", self.__upd_background)
         self.__background = self.__accCanvas.copy_from_bbox(self.__accAxis.bbox)
@@ -141,7 +143,10 @@ class XratersWindow(gtk.Window):
         self.__actionSave.set_sensitive(True)
         
     def save(self, widget, data=None):
-        file = open("data.dat", 'wb')
+        file = open(os.sep.join([self.preferences['outputDir'], "data.dat"]), 
+                    'wb')
+        #TODO Display a real save dialog.
+        #TODO Check if file is writable etc.
         writer = csv.writer(file, 'excel-tab')
         for i in range(len(self.__time)):
             with self.__dataLock:
@@ -158,7 +163,7 @@ class XratersWindow(gtk.Window):
             self.__resetData()
             gobject.timeout_add(45, self.__drawAcc)
             self.__actionDisconnect.set_sensitive(True)
-            self.__actionSave.set_sensitive(False)
+            self.__actionSave.set_sensitive(True)
             self.__wiiMote.mesg_callback = self.__getAcc
         else:
             self.__actionConnect.set_sensitive(True)
