@@ -8,13 +8,14 @@ from gtk.gdk import threads_init
 from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+import csv
 import cwiid
 import gobject
 import gtk
 import os
 import sys
+import threading
 import time
-import csv
 
 # Check if we are working in the source tree or from the installed 
 # package and mangle the python path accordingly
@@ -51,6 +52,7 @@ class XratersWindow(gtk.Window):
         self.__connected = False
         self.__wiiMote = None
         self.__resetData()
+        self.__dataLock = threading.Lock()
 
     def __resetData(self):
         self.__xAcc = list()
@@ -142,10 +144,11 @@ class XratersWindow(gtk.Window):
         file = open("data.dat", 'wb')
         writer = csv.writer(file, 'excel-tab')
         for i in range(len(self.__time)):
-            writer.writerow([self.__time[i],
-                             self.__xAcc[i],
-                             self.__yAcc[i],
-                             self.__zAcc[i]])
+            with self.__dataLock:
+                writer.writerow([self.__time[i],
+                                 self.__xAcc[i],
+                                 self.__yAcc[i],
+                                 self.__zAcc[i]])
         file.close()
         
     def __connectCallback(self, connectionMaker):
@@ -153,39 +156,34 @@ class XratersWindow(gtk.Window):
             self.__connected = True
             self.__wiiMote = connectionMaker.wiiMote
             self.__resetData()
-            gobject.timeout_add(9, self.__getAcc)
             gobject.timeout_add(45, self.__drawAcc)
             self.__actionDisconnect.set_sensitive(True)
             self.__actionSave.set_sensitive(False)
+            self.__wiiMote.mesg_callback = self.__getAcc
         else:
-            self.__actionConnect.set_sensitive(True)    
-    
+            self.__actionConnect.set_sensitive(True)
+            
     def __upd_background(self, event):
         self.__background = self.__accCanvas.copy_from_bbox(self.__accAxis.bbox)
     
-    def __getAcc(self):
-        if not self.__connected:
-            return False
-        messages = None
-        while messages == None:
-            messages = self.__wiiMote.get_mesg()
-            
+    def __getAcc(self, messages, theTime=0):
         for msg in messages:
             if msg[0] == cwiid.MESG_ACC:
                 # Normalize data using calibration info from the controller
                 for i in range(3):
                     self.__acc[i] = float(msg[1][i]-self.__acc_cal[0][i])/(self.__acc_cal[1][i]-self.__acc_cal[0][i])
                     self.__acc[i] *= self.preferences['accRange']
-        self.__time.append(time.time()-self.__startTime)
-        self.__xAcc.append(self.__acc[0])
-        self.__yAcc.append(self.__acc[1])
-        self.__zAcc.append(self.__acc[2])
-        if (len(self.__time) > 600):
-            self.__time.pop(0)
-            self.__xAcc.pop(0)
-            self.__yAcc.pop(0)
-            self.__zAcc.pop(0)
-        return True
+                with self.__dataLock:
+                    self.__time.append(theTime-self.__startTime)
+                    self.__xAcc.append(self.__acc[0])
+                    self.__yAcc.append(self.__acc[1])
+                    self.__zAcc.append(self.__acc[2])
+                if (len(self.__time) > 600):
+                    with self.__dataLock:
+                        self.__time.pop(0)
+                        self.__xAcc.pop(0)
+                        self.__yAcc.pop(0)
+                        self.__zAcc.pop(0)
 
     def __drawAcc(self):
         if not self.__connected:
@@ -196,10 +194,11 @@ class XratersWindow(gtk.Window):
             gobject.idle_add(self.__accCanvas.draw)
         if self.__background != None:
             self.__accCanvas.restore_region(self.__background)
-        self.__line[0].set_data(self.__time, self.__xAcc)
-        self.__line[1].set_data(self.__time, self.__yAcc)
-        self.__line[2].set_data(self.__time, self.__zAcc)
-        self.__accAxis.draw_artist(self.__line[0])
+        with self.__dataLock:
+            self.__line[0].set_data(self.__time, self.__xAcc)
+            self.__line[1].set_data(self.__time, self.__yAcc)
+            self.__line[2].set_data(self.__time, self.__zAcc)
+            self.__accAxis.draw_artist(self.__line[0])
         self.__accAxis.draw_artist(self.__line[1])
         self.__accAxis.draw_artist(self.__line[2])
         self.__accCanvas.blit(self.__accAxis.bbox)
