@@ -4,6 +4,8 @@
 # This file is in the public domain
 ### END LICENSE
 
+__metaclass__ = type
+
 from gtk.gdk import threads_init
 from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -32,9 +34,17 @@ from xraters import AboutXratersDialog, PreferencesXratersDialog
 from xraters.WiiConnectionMaker import WiiConnectionMaker
 from xraters.xratersconfig import getdatapath
 
-
 class XratersWindow(gtk.Window):
     __gtype_name__ = "XratersWindow"
+    
+    def callback(funct):
+        def callbackWrapper(cls, *args, **kwds):
+            if cls.isConnected:
+                funct(cls, *args, **kwds)
+                return True
+            else:
+                return False
+        return callbackWrapper
 
     def __init__(self):
         """__init__ - This function is typically not called directly.
@@ -53,7 +63,9 @@ class XratersWindow(gtk.Window):
         self.__wiiMote = None
         self.__resetData()
         self.__dataLock = threading.Lock()
-
+        
+    isConnected = property(lambda self: self.__connected)
+    
     def __resetData(self):
         self.__xAcc = list()
         self.__yAcc = list()
@@ -101,7 +113,7 @@ class XratersWindow(gtk.Window):
         self.__vboxMain.show()
         self.__vboxMain.reorder_child(self.__accCanvas, 1)
         self.__progressBatt = self.builder.get_object('progressbarBattery')
-    
+        
     def about(self, widget, data=None):
         """about - display the about box for xraters """
         about = AboutXratersDialog.NewAboutXratersDialog()
@@ -149,12 +161,11 @@ class XratersWindow(gtk.Window):
         #TODO Display a real save dialog.
         #TODO Check if file is writable etc.
         writer = csv.writer(file, 'excel-tab')
-        for i in range(len(self.__time)):
-            with self.__dataLock:
-                writer.writerow([self.__time[i],
-                                 self.__xAcc[i],
-                                 self.__yAcc[i],
-                                 self.__zAcc[i]])
+        with self.__dataLock:
+            writer.writerows(zip(self.__time, 
+                                 self.__xAcc, 
+                                 self.__yAcc, 
+                                 self.__zAcc))
         file.close()
         
     def __connectCallback(self, connectionMaker):
@@ -171,6 +182,7 @@ class XratersWindow(gtk.Window):
         else:
             self.__actionConnect.set_sensitive(True)
             
+    @callback
     def __upd_background(self, event):
         self.__background = self.__accCanvas.copy_from_bbox(self.__accAxis.bbox)
     
@@ -193,9 +205,8 @@ class XratersWindow(gtk.Window):
                         self.__yAcc.pop(0)
                         self.__zAcc.pop(0)
 
+    @callback
     def __drawAcc(self):
-        if not self.__connected:
-            return False
         if (self.__time[-1] > self.__xlim or len(self.__time)==0):
             self.__xlim = time.time() - self.__startTime + 2
             self.__accAxis.set_xlim(self.__time[0]+2, self.__xlim)
@@ -210,15 +221,12 @@ class XratersWindow(gtk.Window):
         self.__accAxis.draw_artist(self.__line[1])
         self.__accAxis.draw_artist(self.__line[2])
         self.__accCanvas.blit(self.__accAxis.bbox)
-        return True
 
+    @callback
     def __updBatteryLevel(self):
-        if not self.__connected:
-            return False
         self.__wiiMote.request_status()
         self.__progressBatt.set_fraction(float(self.__wiiMote.state['battery']) / cwiid.BATTERY_MAX)
         self.__progressBatt.set_text("Battery: %.0f%%" % (self.__progressBatt.get_fraction() * 100))
-        return True
 
 def NewXratersWindow():
     """NewXratersWindow - returns a fully instantiated
