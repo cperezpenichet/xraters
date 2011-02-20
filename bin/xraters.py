@@ -156,11 +156,24 @@ class XratersWindow(gtk.Window):
         self.__actionSave.set_sensitive(True)
         
     def save(self, widget, data=None):
-        file = open(os.sep.join([self.preferences['outputDir'], "data.dat"]), 
+        file = open(os.sep.join([self.preferences['outputDir'], 
+                                 "acceleration_" + 
+                                 time.strftime("%Y-%m-%d_%H-%M-%S") + 
+                                 ".dat"]), 
                     'wb')
         #TODO Display a real save dialog.
         #TODO Check if file is writable etc.
         writer = csv.writer(file, 'excel-tab')
+        file.write(writer.dialect.delimiter.join(("#time",
+                                                  "Ax",
+                                                  "Ay",
+                                                  "Az")))
+        file.write(writer.dialect.lineterminator)
+        file.write(writer.dialect.delimiter.join(("#s",
+                                                  "g",
+                                                  "g",
+                                                  "g")))
+        file.write(writer.dialect.lineterminator)
         with self.__dataLock:
             writer.writerows(zip(self.__time, 
                                  self.__xAcc, 
