@@ -100,6 +100,7 @@ class XratersWindow(gtk.Window):
         self.__vboxMain.pack_start(self.__accCanvas, True, True)
         self.__vboxMain.show()
         self.__vboxMain.reorder_child(self.__accCanvas, 1)
+        self.__progressBatt = self.builder.get_object('progressbarBattery')
     
     def about(self, widget, data=None):
         """about - display the about box for xraters """
@@ -165,6 +166,8 @@ class XratersWindow(gtk.Window):
             self.__actionDisconnect.set_sensitive(True)
             self.__actionSave.set_sensitive(True)
             self.__wiiMote.mesg_callback = self.__getAcc
+            self.__updBatteryLevel()
+            gobject.timeout_add_seconds(60, self.__updBatteryLevel)
         else:
             self.__actionConnect.set_sensitive(True)
             
@@ -207,6 +210,14 @@ class XratersWindow(gtk.Window):
         self.__accAxis.draw_artist(self.__line[1])
         self.__accAxis.draw_artist(self.__line[2])
         self.__accCanvas.blit(self.__accAxis.bbox)
+        return True
+
+    def __updBatteryLevel(self):
+        if not self.__connected:
+            return False
+        self.__wiiMote.request_status()
+        self.__progressBatt.set_fraction(float(self.__wiiMote.state['battery']) / cwiid.BATTERY_MAX)
+        self.__progressBatt.set_text("Battery: %.0f%%" % (self.__progressBatt.get_fraction() * 100))
         return True
 
 def NewXratersWindow():

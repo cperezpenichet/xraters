@@ -213,20 +213,21 @@
             <property name="spacing">2</property>
             <property name="has_resize_grip">False</property>
             <child>
-              <object class="GtkLabel" id="label2">
+              <object class="GtkProgressBar" id="progressbarBattery">
+                <property name="width_request">150</property>
                 <property name="visible">True</property>
-                <property name="xalign">0</property>
-                <property name="xpad">5</property>
-                <property name="ypad">5</property>
-                <property name="label" translatable="yes">Status Area</property>
+                <property name="ellipsize">start</property>
               </object>
               <packing>
-                <property name="position">0</property>
+                <property name="expand">False</property>
+                <property name="padding">10</property>
+                <property name="position">-1</property>
               </packing>
             </child>
           </object>
           <packing>
             <property name="expand">False</property>
+            <property name="padding">3</property>
             <property name="position">3</property>
           </packing>
         </child>
