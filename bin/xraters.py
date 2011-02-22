@@ -212,24 +212,31 @@ class XratersWindow(gtk.Window):
                                 "acceleration_" + 
                                 time.strftime("%Y-%m-%d_%H-%M-%S") + 
                                 ".dat"]) 
-        with file(fileName, 'wb') as outFile:
-            #TODO Display a real save dialog.
-            #TODO Check if outFile is writable etc.
-            writer = csv.writer(outFile, 'excel-tab')
-            outFile.write(writer.dialect.delimiter.join(("#time",
-                                                      "Ax",
-                                                      "Ay",
-                                                      "Az")))
-            outFile.write(writer.dialect.lineterminator)
-            outFile.write(writer.dialect.delimiter.join(("#s",
-                                                      "g",
-                                                      "g",
-                                                      "g")))
-            outFile.write(writer.dialect.lineterminator)
-            with self._dataLock:
-                writer.writerows(zip(self._time, *self._accData))
-#        file.close()
-        
+        try:
+            with open(fileName, 'wb') as outFile:
+                #TODO Display a real save dialog.
+                writer = csv.writer(outFile, 'excel-tab')
+                outFile.write(writer.dialect.delimiter.join(("#time",
+                                                          "Ax",
+                                                          "Ay",
+                                                          "Az")))
+                outFile.write(writer.dialect.lineterminator)
+                outFile.write(writer.dialect.delimiter.join(("#s",
+                                                          "g",
+                                                          "g",
+                                                          "g")))
+                outFile.write(writer.dialect.lineterminator)
+                with self._dataLock:
+                    writer.writerows(zip(self._time, *self._accData))
+        except IOError as error:
+            dialog = gtk.MessageDialog(parent   = None,
+                                       flags    = gtk.DIALOG_DESTROY_WITH_PARENT,
+                                       type     = gtk.MESSAGE_ERROR,
+                                       buttons  = gtk.BUTTONS_OK,
+                                       message_format = str(error))
+            dialog.set_title(error[1])
+            dialog.connect('response', lambda dialog, response: dialog.destroy())
+            dialog.show()
 
 def NewXratersWindow():
     """NewXratersWindow - returns a fully instantiated
