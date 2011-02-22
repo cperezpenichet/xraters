@@ -6,6 +6,7 @@
 
 __metaclass__ = type
 
+from cwiid import X, Y, Z 
 from gtk.gdk import threads_init
 from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -34,18 +35,11 @@ from xraters import AboutXratersDialog, PreferencesXratersDialog
 from xraters.WiiConnectionMaker import WiiConnectionMaker
 from xraters.xratersconfig import getdatapath
 
+threeAxes = [X,Y,Z]
+
 class XratersWindow(gtk.Window):
     __gtype_name__ = "XratersWindow"
     
-    def callback(funct):
-        def callbackWrapper(cls, *args, **kwds):
-            if cls.isConnected:
-                funct(cls, *args, **kwds)
-                return True
-            else:
-                return False
-        return callbackWrapper
-
     def __init__(self):
         """__init__ - This function is typically not called directly.
         Creation a XratersWindow requires redeading the associated ui
@@ -56,23 +50,86 @@ class XratersWindow(gtk.Window):
         XratersWindow object.
 
         """
-        self.__acc_cal = ((128, 128, 128),
-                          (255, 255, 255))
-        self.__acc = [0, 0, 0]
-        self.__connected = False
-        self.__wiiMote = None
-        self.__resetData()
-        self.__dataLock = threading.Lock()
+        self._acc_cal = ((128, 128, 128),
+                         (255, 255, 255))
+        self._acc = [0, 0, 0]
+        self._connected = False
+        self._wiiMote = None
+        self._resetData()
+        self._dataLock = threading.Lock()
         
-    isConnected = property(lambda self: self.__connected)
+    isConnected = property(lambda self: self._connected)
     
-    def __resetData(self):
-        self.__xAcc = list()
-        self.__yAcc = list()
-        self.__zAcc = list()
-        self.__time = list()
-        self.__startTime = time.time()
-        self.__xlim = 0.1
+    def callback(funct):
+        def _callback(cls, *args, **kwds):
+            if cls.isConnected:
+                funct(cls, *args, **kwds)
+                return True
+            else:
+                return False
+        return _callback
+    
+    def _connectCallback(self, connectionMaker):
+        if connectionMaker.connected:
+            self._connected = True
+            self._wiiMote = connectionMaker.wiiMote
+            self._resetData()
+            gobject.timeout_add(45, self._drawAcc)
+            self.widget('actionDisconnect').set_sensitive(True)
+            self.widget('actionSave').set_sensitive(True)
+            self._wiiMote.mesg_callback = self._getAcc
+            self._updBatteryLevel()
+            gobject.timeout_add_seconds(60, self._updBatteryLevel)
+        else:
+            self.widget('actionWiiConnect').set_sensitive(True)
+            
+    @callback
+    def _upd_background(self, event):
+        self.__background = self._accCanvas.copy_from_bbox(self._accAxis.bbox)
+    
+    def _getAcc(self, messages, theTime=0):
+        for msg in messages:
+            if msg[0] == cwiid.MESG_ACC:
+                # Normalize data using calibration info from the controller
+                for i, axisAcc in enumerate(msg[1]):
+                    self._acc[i] = float(axisAcc-self._acc_cal[0][i])/(self._acc_cal[1][i]-self._acc_cal[0][i])
+                    self._acc[i] *= self.preferences['accRange']
+                with self._dataLock:
+                    self._time.append(theTime-self._startTime)
+                    [self._accData[i].append(self._acc[i]) for i in threeAxes] 
+                if (len(self._time) > 600):
+                    with self._dataLock:
+                        self._time.pop(0)
+                        [self._accData[i].pop(0) for i in threeAxes]
+
+    @callback
+    def _drawAcc(self):
+        if (self._time[-1] > self._xlim or len(self._time)==0):
+            self._xlim = time.time() - self._startTime + 2
+            self._accAxis.set_xlim(self._time[0]+2, self._xlim)
+            gobject.idle_add(self._accCanvas.draw)
+        if self.__background != None:
+            self._accCanvas.restore_region(self.__background)
+        with self._dataLock:
+            [self._lines[i].set_data(self._time, self._accData[i]) for i in threeAxes]
+        [self._accAxis.draw_artist(self._lines[i]) for i in threeAxes]
+        self._accCanvas.blit(self._accAxis.bbox)
+
+    @callback
+    def _updBatteryLevel(self):
+        self._wiiMote.request_status()
+        progressBar = self.widget("progressbarBattery")
+        progressBar.set_fraction(float(self._wiiMote.state['battery']) / cwiid.BATTERY_MAX)
+        progressBar.set_text("Battery: %.0f%%" % (progressBar.get_fraction() * 100))
+    
+    def _resetData(self):
+        self._accData = [list(), list(), list()]
+        self._time = list()
+        self._startTime = time.time()
+        self._xlim = 0.1
+        
+    def widget(self, name):
+        return self.builder.get_object(name)
 
     def finish_initializing(self, builder):
         """finish_initalizing should be called after parsing the ui definition
@@ -83,36 +140,31 @@ class XratersWindow(gtk.Window):
         #get a reference to the builder and set up the signals
         self.builder = builder
         self.builder.connect_signals(self)
-
+        
         #uncomment the following code to read in preferences at start up
         dlg = PreferencesXratersDialog.NewPreferencesXratersDialog()
         self.preferences = dlg.get_preferences()
 
         #code for other initialization actions should be added here
-        self.statusBar = self.builder.get_object("statusbar")
-        self.__actionConnect = self.builder.get_object("actionWiiConnect")
-        self.__actionDisconnect = self.builder.get_object("actionDisconnect")
-        self.__actionSave = self.builder.get_object("actionSave")
-        self.__vboxMain = self.builder.get_object("vboxMain")
-        
-        self.__accFigure = Figure(figsize=(8,6), dpi=72)
-        self.__accAxis = self.__accFigure.add_subplot(111)
-        self.__line = self.__accAxis.plot(self.__time, self.__xAcc,
-                                          self.__time, self.__yAcc,
-                                          self.__time, self.__zAcc, animated=True)
-        self.__accAxis.set_ylim(-self.preferences['accRange'], 
+        self._accFigure = Figure(figsize=(8,6), dpi=72)
+        self._accAxis = self._accFigure.add_subplot(111)
+        self._accAxis.set_xlabel("time (s)")
+        self._accAxis.set_ylabel("gravity (g)")
+        self._lines = self._accAxis.plot(self._time, self._accData[X],
+                                         self._time, self._accData[Y],
+                                         self._time, self._accData[Z], 
+                                         animated=True)
+        self._accAxis.set_ylim(-self.preferences['accRange'], 
                                 self.preferences['accRange'])
-        self.__accAxis.set_xlabel("time (s)")
-        self.__accAxis.set_ylabel("gravity (g)")
-        self.__accCanvas = FigureCanvas(self.__accFigure)
-        self.__accCanvas.mpl_connect("draw_event", self.__upd_background)
-        self.__background = self.__accCanvas.copy_from_bbox(self.__accAxis.bbox)
-        self.__accCanvas.show()
-        self.__accCanvas.set_size_request(600, 400)
-        self.__vboxMain.pack_start(self.__accCanvas, True, True)
-        self.__vboxMain.show()
-        self.__vboxMain.reorder_child(self.__accCanvas, 1)
-        self.__progressBatt = self.builder.get_object('progressbarBattery')
+        self._accCanvas = FigureCanvas(self._accFigure)
+        self._accCanvas.mpl_connect("draw_event", self._upd_background)
+        self.__background = self._accCanvas.copy_from_bbox(self._accAxis.bbox)
+        self._accCanvas.show()
+        self._accCanvas.set_size_request(600, 400)
+        vbMain = self.widget("vboxMain")
+        vbMain.pack_start(self._accCanvas, True, True)
+        vbMain.show()
+        vbMain.reorder_child(self._accCanvas, 1)
         
     def about(self, widget, data=None):
         """about - display the about box for xraters """
@@ -127,9 +179,9 @@ class XratersWindow(gtk.Window):
         if response == gtk.RESPONSE_OK:
             #make any updates based on changed preferences here
             self.preferences = prefs.get_preferences()
-            self.__accAxis.set_ylim(-self.preferences['accRange'], 
+            self._accAxis.set_ylim(-self.preferences['accRange'], 
                                     self.preferences['accRange'])
-            self.__accCanvas.draw()
+            self._accCanvas.draw()
         prefs.destroy()
 
     def quit(self, widget, data=None):
@@ -142,104 +194,42 @@ class XratersWindow(gtk.Window):
         gtk.main_quit()
         
     def on_wiiConnect(self, widget, data=None):
-        self.__actionConnect.set_sensitive(False)
+        self.widget('actionWiiConnect').set_sensitive(False)
         connectionMaker = WiiConnectionMaker(self.preferences['wiiAddress'],
-                                             self.statusBar,
-                                             self.__connectCallback)
+                                             self.widget("statusbar"),
+                                             self._connectCallback)
         connectionMaker.start()
         
     def on_wiiDisconnect(self, widget, data=None):
-        self.__wiiMote.close()
-        self.__connected = False
-        self.__actionDisconnect.set_sensitive(False)
-        self.__actionConnect.set_sensitive(True)
-        self.__actionSave.set_sensitive(True)
+        self._wiiMote.close()
+        self._connected = False
+        self.widget('actionDisconnect').set_sensitive(False)
+        self.widget('actionWiiConnect').set_sensitive(True)
+        self.widget('actionSave').set_sensitive(True)
         
     def save(self, widget, data=None):
-        file = open(os.sep.join([self.preferences['outputDir'], 
-                                 "acceleration_" + 
-                                 time.strftime("%Y-%m-%d_%H-%M-%S") + 
-                                 ".dat"]), 
-                    'wb')
-        #TODO Display a real save dialog.
-        #TODO Check if file is writable etc.
-        writer = csv.writer(file, 'excel-tab')
-        file.write(writer.dialect.delimiter.join(("#time",
-                                                  "Ax",
-                                                  "Ay",
-                                                  "Az")))
-        file.write(writer.dialect.lineterminator)
-        file.write(writer.dialect.delimiter.join(("#s",
-                                                  "g",
-                                                  "g",
-                                                  "g")))
-        file.write(writer.dialect.lineterminator)
-        with self.__dataLock:
-            writer.writerows(zip(self.__time, 
-                                 self.__xAcc, 
-                                 self.__yAcc, 
-                                 self.__zAcc))
-        file.close()
+        fileName = os.sep.join([self.preferences['outputDir'], 
+                                "acceleration_" + 
+                                time.strftime("%Y-%m-%d_%H-%M-%S") + 
+                                ".dat"]) 
+        with file(fileName, 'wb') as outFile:
+            #TODO Display a real save dialog.
+            #TODO Check if outFile is writable etc.
+            writer = csv.writer(outFile, 'excel-tab')
+            outFile.write(writer.dialect.delimiter.join(("#time",
+                                                      "Ax",
+                                                      "Ay",
+                                                      "Az")))
+            outFile.write(writer.dialect.lineterminator)
+            outFile.write(writer.dialect.delimiter.join(("#s",
+                                                      "g",
+                                                      "g",
+                                                      "g")))
+            outFile.write(writer.dialect.lineterminator)
+            with self._dataLock:
+                writer.writerows(zip(self._time, *self._accData))
+#        file.close()
         
-    def __connectCallback(self, connectionMaker):
-        if connectionMaker.connected:
-            self.__connected = True
-            self.__wiiMote = connectionMaker.wiiMote
-            self.__resetData()
-            gobject.timeout_add(45, self.__drawAcc)
-            self.__actionDisconnect.set_sensitive(True)
-            self.__actionSave.set_sensitive(True)
-            self.__wiiMote.mesg_callback = self.__getAcc
-            self.__updBatteryLevel()
-            gobject.timeout_add_seconds(60, self.__updBatteryLevel)
-        else:
-            self.__actionConnect.set_sensitive(True)
-            
-    @callback
-    def __upd_background(self, event):
-        self.__background = self.__accCanvas.copy_from_bbox(self.__accAxis.bbox)
-    
-    def __getAcc(self, messages, theTime=0):
-        for msg in messages:
-            if msg[0] == cwiid.MESG_ACC:
-                # Normalize data using calibration info from the controller
-                for i in range(3):
-                    self.__acc[i] = float(msg[1][i]-self.__acc_cal[0][i])/(self.__acc_cal[1][i]-self.__acc_cal[0][i])
-                    self.__acc[i] *= self.preferences['accRange']
-                with self.__dataLock:
-                    self.__time.append(theTime-self.__startTime)
-                    self.__xAcc.append(self.__acc[0])
-                    self.__yAcc.append(self.__acc[1])
-                    self.__zAcc.append(self.__acc[2])
-                if (len(self.__time) > 600):
-                    with self.__dataLock:
-                        self.__time.pop(0)
-                        self.__xAcc.pop(0)
-                        self.__yAcc.pop(0)
-                        self.__zAcc.pop(0)
-
-    @callback
-    def __drawAcc(self):
-        if (self.__time[-1] > self.__xlim or len(self.__time)==0):
-            self.__xlim = time.time() - self.__startTime + 2
-            self.__accAxis.set_xlim(self.__time[0]+2, self.__xlim)
-            gobject.idle_add(self.__accCanvas.draw)
-        if self.__background != None:
-            self.__accCanvas.restore_region(self.__background)
-        with self.__dataLock:
-            self.__line[0].set_data(self.__time, self.__xAcc)
-            self.__line[1].set_data(self.__time, self.__yAcc)
-            self.__line[2].set_data(self.__time, self.__zAcc)
-            self.__accAxis.draw_artist(self.__line[0])
-        self.__accAxis.draw_artist(self.__line[1])
-        self.__accAxis.draw_artist(self.__line[2])
-        self.__accCanvas.blit(self.__accAxis.bbox)
-
-    @callback
-    def __updBatteryLevel(self):
-        self.__wiiMote.request_status()
-        self.__progressBatt.set_fraction(float(self.__wiiMote.state['battery']) / cwiid.BATTERY_MAX)
-        self.__progressBatt.set_text("Battery: %.0f%%" % (self.__progressBatt.get_fraction() * 100))
 
 def NewXratersWindow():
     """NewXratersWindow - returns a fully instantiated
