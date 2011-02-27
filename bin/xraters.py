@@ -97,16 +97,23 @@ class XratersWindow(gtk.Window):
                 with self._dataLock:
                     self._time.append(theTime-self._startTime)
                     [self._accData[i].append(self._acc[i]) for i in threeAxes] 
-                if (len(self._time) > 600):
+                if (self._time[-1] - self._time[0] > 6):
                     with self._dataLock:
                         self._time.pop(0)
                         [self._accData[i].pop(0) for i in threeAxes]
 
     @callback
     def _drawAcc(self):
-        if (self._time[-1] > self._xlim or len(self._time)==0):
-            self._xlim = time.time() - self._startTime + 2
-            self._accAxis.set_xlim(self._time[0]+2, self._xlim)
+        draw_flag = False
+        lims = self._accAxis.get_xlim()
+        if (self._time[-1] > lims[1] or len(self._time)==0):
+            self._accAxis.set_xlim(lims[0], lims[1]+2)
+            lims = self._accAxis.get_xlim()
+            draw_flag = True
+        if (self._time[-1] - lims[0] > 6):
+            self._accAxis.set_xlim(lims[0]+2, lims[1])
+            draw_flag = True
+        if draw_flag:
             gobject.idle_add(self._accCanvas.draw)
         if self.__background != None:
             self._accCanvas.restore_region(self.__background)
@@ -126,7 +133,6 @@ class XratersWindow(gtk.Window):
         self._accData = [list(), list(), list()]
         self._time = list()
         self._startTime = time.time()
-        self._xlim = 0.1
         
     def widget(self, name):
         return self.builder.get_object(name)
@@ -154,6 +160,7 @@ class XratersWindow(gtk.Window):
                                          self._time, self._accData[Y],
                                          self._time, self._accData[Z], 
                                          animated=True)
+        self._accAxis.set_xlim(0, 2)
         self._accAxis.set_ylim(-self.preferences['accRange'], 
                                 self.preferences['accRange'])
         self._accCanvas = FigureCanvas(self._accFigure)
@@ -198,6 +205,8 @@ class XratersWindow(gtk.Window):
         connectionMaker = WiiConnectionMaker(self.preferences['wiiAddress'],
                                              self.widget("statusbar"),
                                              self._connectCallback)
+        self._accAxis.set_xlim(0, 2)
+        gobject.idle_add(self._accCanvas.draw)
         connectionMaker.start()
         
     def on_wiiDisconnect(self, widget, data=None):
