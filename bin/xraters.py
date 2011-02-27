@@ -77,6 +77,7 @@ class XratersWindow(gtk.Window):
             gobject.timeout_add(45, self._drawAcc)
             self.widget('actionDisconnect').set_sensitive(True)
             self.widget('actionSave').set_sensitive(True)
+            self.widget('toolbutton1').set_related_action(self.widget('actionDisconnect'))
             self._wiiMote.mesg_callback = self._getAcc
             self._updBatteryLevel()
             gobject.timeout_add_seconds(60, self._updBatteryLevel)
@@ -125,9 +126,13 @@ class XratersWindow(gtk.Window):
     @callback
     def _updBatteryLevel(self):
         self._wiiMote.request_status()
+        self._setBatteryIndicator(float(self._wiiMote.state['battery']) / 
+                                  cwiid.BATTERY_MAX)
+        
+    def _setBatteryIndicator(self, level):
         progressBar = self.widget("progressbarBattery")
-        progressBar.set_fraction(float(self._wiiMote.state['battery']) / cwiid.BATTERY_MAX)
-        progressBar.set_text("Battery: %.0f%%" % (progressBar.get_fraction() * 100))
+        progressBar.set_fraction(level)
+        progressBar.set_text("Battery: %.0f%%" % (level * 100))
     
     def _resetData(self):
         self._accData = [list(), list(), list()]
@@ -171,7 +176,8 @@ class XratersWindow(gtk.Window):
         vbMain = self.widget("vboxMain")
         vbMain.pack_start(self._accCanvas, True, True)
         vbMain.show()
-        vbMain.reorder_child(self._accCanvas, 1)
+        vbMain.reorder_child(self._accCanvas, 2)
+        self._setBatteryIndicator(0)
         
     def about(self, widget, data=None):
         """about - display the about box for xraters """
@@ -214,7 +220,10 @@ class XratersWindow(gtk.Window):
         self._connected = False
         self.widget('actionDisconnect').set_sensitive(False)
         self.widget('actionWiiConnect').set_sensitive(True)
+        self.widget('toolbutton1').set_related_action(self.widget('actionWiiConnect'))
         self.widget('actionSave').set_sensitive(True)
+        self.widget('statusbar').pop(self.widget("statusbar").get_context_id(''))
+        self._setBatteryIndicator(0)
         
     def save(self, widget, data=None):
         fileName = os.sep.join([self.preferences['outputDir'], 
