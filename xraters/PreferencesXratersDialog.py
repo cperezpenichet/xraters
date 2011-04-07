@@ -14,10 +14,10 @@ from xraters.xratersconfig import getdatapath
 class PreferencesXratersDialog(gtk.Dialog):
     __gtype_name__ = "PreferencesXratersDialog"
     prefernces = {}
-    __ranges = [["+-2g", 2],
+    __ranges = [["+-1.5g", 1.5],
+                ["+-2g", 2],
                 ["+-4g", 4],
                 ["+-6g", 6],
-                ["+-8g", 8],
                 ]
 
     def __init__(self):
