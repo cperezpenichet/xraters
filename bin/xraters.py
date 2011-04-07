@@ -10,7 +10,7 @@ from cwiid import X, Y, Z
 from gtk.gdk import threads_init
 from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg as FigureCanvas
 from matplotlib.figure import Figure
-from matplotlib.lines import Line2D
+from scipy import correlate
 import csv
 import cwiid
 import gobject
@@ -50,6 +50,10 @@ class XratersWindow(gtk.Window):
         XratersWindow object.
 
         """
+        self._PATTERN = 17 * [1]
+        self._PATTERN.extend(17 * [-1])
+        self._THRESHOLD = 0.5
+        
         self._acc_cal = ((128, 128, 128),
                          (255, 255, 255))
         self._acc = [0, 0, 0]
@@ -77,7 +81,9 @@ class XratersWindow(gtk.Window):
             gobject.timeout_add(45, self._drawAcc)
             self.widget('actionDisconnect').set_sensitive(True)
             self.widget('actionSave').set_sensitive(True)
+            self.widget('actionArm').set_sensitive(True)
             self.widget('toolbutton1').set_related_action(self.widget('actionDisconnect'))
+            self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
             self._wiiMote.mesg_callback = self._getAcc
             self._updBatteryLevel()
             gobject.timeout_add_seconds(60, self._updBatteryLevel)
@@ -97,7 +103,13 @@ class XratersWindow(gtk.Window):
                     self._acc[i] *= self.preferences['accRange']
                 with self._dataLock:
                     self._time.append(theTime-self._startTime)
-                    [self._accData[i].append(self._acc[i]) for i in threeAxes] 
+                    [self._accData[i].append(self._acc[i]) for i in threeAxes]
+                    l = len(self._accData[1])
+                    c = abs(correlate(self._PATTERN, 
+                                  self._accData[1][l-len(self._PATTERN):l])[-1])
+                    if (not self._moving) and (self._armed) and (c > self._THRESHOLD):
+                        self._moveTime = self._time[-1]
+                        self._moving = True
                 if (self._time[-1] - self._time[0] > 6):
                     with self._dataLock:
                         self._time.pop(0)
@@ -113,6 +125,10 @@ class XratersWindow(gtk.Window):
             draw_flag = True
         if (self._time[-1] - lims[0] > 6):
             self._accAxis.set_xlim(lims[0]+2, lims[1])
+            draw_flag = True
+        if (not self._draw) and self._moving:
+            self._draw = True
+            self._accAxis.axvline(self._moveTime, color="r")
             draw_flag = True
         if draw_flag:
             gobject.idle_add(self._accCanvas.draw)
@@ -138,6 +154,10 @@ class XratersWindow(gtk.Window):
         self._accData = [list(), list(), list()]
         self._time = list()
         self._startTime = time.time()
+        self._armed = False
+        self._moving = False
+        self._draw = False
+        self._moveTime = self._startTime
         
     def widget(self, name):
         return self.builder.get_object(name)
@@ -220,10 +240,24 @@ class XratersWindow(gtk.Window):
         self._connected = False
         self.widget('actionDisconnect').set_sensitive(False)
         self.widget('actionWiiConnect').set_sensitive(True)
+        self.widget('actionArm').set_sensitive(True)
+        self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
         self.widget('toolbutton1').set_related_action(self.widget('actionWiiConnect'))
         self.widget('actionSave').set_sensitive(True)
         self.widget('statusbar').pop(self.widget("statusbar").get_context_id(''))
         self._setBatteryIndicator(0)
+        
+    def on_Arm(self, widget, data=None):
+        self.widget('actionArm').set_sensitive(False)
+        self.widget('actionDisarm').set_sensitive(True)
+        self.widget('toolbutton3').set_related_action(self.widget('actionDisarm'))
+        self._armed = True
+        
+    def on_Disarm(self, widget, data=None):
+        self.widget('actionArm').set_sensitive(True)
+        self.widget('actionDisarm').set_sensitive(False)
+        self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
+        self._armed = False
         
     def save(self, widget, data=None):
         fileName = os.sep.join([self.preferences['outputDir'], 

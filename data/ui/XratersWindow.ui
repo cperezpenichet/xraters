@@ -64,6 +64,28 @@
                 <child type="submenu">
                   <object class="GtkMenu" id="menu2">
                     <property name="visible">True</property>
+                    <property name="ubuntu_local">True</property>
+                    <child>
+                      <object class="GtkImageMenuItem" id="menuitem2">
+                        <property name="visible">True</property>
+                        <property name="related_action">actionArm</property>
+                        <property name="use_action_appearance">True</property>
+                        <property name="use_stock">True</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="menuitem3">
+                        <property name="visible">True</property>
+                        <property name="related_action">actionDisarm</property>
+                        <property name="use_action_appearance">True</property>
+                        <property name="use_stock">True</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSeparatorMenuItem" id="separatormenuitem2">
+                        <property name="visible">True</property>
+                      </object>
+                    </child>
                     <child>
                       <object class="GtkImageMenuItem" id="imagemenuitem11">
                         <property name="visible">True</property>
@@ -167,6 +189,19 @@
                 <property name="homogeneous">True</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkToolButton" id="toolbutton3">
+                <property name="visible">True</property>
+                <property name="related_action">actionArm</property>
+                <property name="use_action_appearance">True</property>
+                <property name="label" translatable="yes">toolbutton3</property>
+                <property name="use_underline">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="homogeneous">True</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -241,5 +276,19 @@
     <property name="sensitive">False</property>
     <property name="always_show_image">True</property>
     <signal name="activate" handler="save"/>
+  </object>
+  <object class="GtkAction" id="actionArm">
+    <property name="label">_Arm</property>
+    <property name="short_label">_Arm</property>
+    <property name="is_important">True</property>
+    <property name="sensitive">False</property>
+    <signal name="activate" handler="on_Arm"/>
+  </object>
+  <object class="GtkAction" id="actionDisarm">
+    <property name="label">_Disarm</property>
+    <property name="short_label">_Disarm</property>
+    <property name="is_important">True</property>
+    <property name="sensitive">False</property>
+    <signal name="activate" handler="on_Disarm"/>
   </object>
 </interface>
