@@ -52,7 +52,6 @@ class XratersWindow(gtk.Window):
         """
         self._PATTERN = 17 * [1]
         self._PATTERN.extend(17 * [-1])
-        self._THRESHOLD = 0.5
         
         self._acc_cal = ((128, 128, 128),
                          (255, 255, 255))
@@ -82,6 +81,7 @@ class XratersWindow(gtk.Window):
             self.widget('actionDisconnect').set_sensitive(True)
             self.widget('actionSave').set_sensitive(True)
             self.widget('actionArm').set_sensitive(True)
+            self.widget('actionReset').set_sensitive(True)
             self.widget('toolbutton1').set_related_action(self.widget('actionDisconnect'))
             self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
             self._wiiMote.mesg_callback = self._getAcc
@@ -104,13 +104,16 @@ class XratersWindow(gtk.Window):
                 with self._dataLock:
                     self._time.append(theTime-self._startTime)
                     [self._accData[i].append(self._acc[i]) for i in threeAxes]
-                    l = len(self._accData[1])
+                    l = len(self._accData[self.preferences['Axis']])
                     c = abs(correlate(self._PATTERN, 
-                                  self._accData[1][l-len(self._PATTERN):l])[-1])
-                    if (not self._moving) and (self._armed) and (c > self._THRESHOLD):
+                                  self._accData[self.preferences['Axis']][l-len(self._PATTERN):l])[-1])
+                    if (not self._moving) and self._armed and \
+                        (c > self.preferences['corrThreshold']):
                         self._moveTime = self._time[-1]
                         self._moving = True
-                if (self._time[-1] - self._time[0] > 6):
+                if (self._time[-1] - self._time[0] > 6) and \
+                    ((not self._draw) or \
+                     (self._draw and (self._moveTime - self._time[0] > 2))):
                     with self._dataLock:
                         self._time.pop(0)
                         [self._accData[i].pop(0) for i in threeAxes]
@@ -119,16 +122,21 @@ class XratersWindow(gtk.Window):
     def _drawAcc(self):
         draw_flag = False
         lims = self._accAxis.get_xlim()
-        if (self._time[-1] > lims[1] or len(self._time)==0):
+        if len(self._time)==0:
+            return
+        if self._time[-1] > lims[1]:
             self._accAxis.set_xlim(lims[0], lims[1]+2)
             lims = self._accAxis.get_xlim()
             draw_flag = True
-        if (self._time[-1] - lims[0] > 6):
+        if (self._time[-1] - lims[0] > 6) and \
+            ((not self._draw) or \
+             (self._draw and (self._moveTime - lims[0] > 2))):
             self._accAxis.set_xlim(lims[0]+2, lims[1])
             draw_flag = True
         if (not self._draw) and self._moving:
             self._draw = True
-            self._accAxis.axvline(self._moveTime, color="r")
+            self._vline = self._accAxis.axvline(self._moveTime, color="k", 
+                                                                linestyle="--")
             draw_flag = True
         if draw_flag:
             gobject.idle_add(self._accCanvas.draw)
@@ -240,7 +248,8 @@ class XratersWindow(gtk.Window):
         self._connected = False
         self.widget('actionDisconnect').set_sensitive(False)
         self.widget('actionWiiConnect').set_sensitive(True)
-        self.widget('actionArm').set_sensitive(True)
+        self.widget('actionReset').set_sensitive(False)
+        self.widget('actionArm').set_sensitive(False)
         self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
         self.widget('toolbutton1').set_related_action(self.widget('actionWiiConnect'))
         self.widget('actionSave').set_sensitive(True)
@@ -259,6 +268,14 @@ class XratersWindow(gtk.Window):
         self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
         self._armed = False
         
+    def on_Reset(self, widget, data=None):
+        if self._draw:
+            self._vline.remove()
+        self._resetData()
+        self._accAxis.set_xlim(0, 2)
+        gobject.idle_add(self._accCanvas.draw)
+        self.on_Disarm(widget, data)
+
     def save(self, widget, data=None):
         fileName = os.sep.join([self.preferences['outputDir'], 
                                 "acceleration_" + 

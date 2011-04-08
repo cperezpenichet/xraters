@@ -3,13 +3,13 @@
 # This file is in the public domain
 ### END LICENSE
 
-import sys
-import os
-import gtk
-from desktopcouch.records.server import CouchDatabase
 from desktopcouch.records.record import Record
-
+from desktopcouch.records.server import CouchDatabase
 from xraters.xratersconfig import getdatapath
+import cwiid
+import gtk
+import os
+import sys
 
 class PreferencesXratersDialog(gtk.Dialog):
     __gtype_name__ = "PreferencesXratersDialog"
@@ -19,6 +19,11 @@ class PreferencesXratersDialog(gtk.Dialog):
                 ["+-4g", 4],
                 ["+-6g", 6],
                 ]
+    
+    __Axes = [["X", cwiid.X],
+              ["Y", cwiid.Y],
+              ["Z", cwiid.Z],
+              ]
 
     def __init__(self):
         """__init__ - This function is typically not called directly.
@@ -55,17 +60,17 @@ class PreferencesXratersDialog(gtk.Dialog):
         
         self.__entryWiiAddress = self.builder.get_object("entry_WiiAddress")
         self.__entryWiiAddress.set_text(self.__preferences['wiiAddress'])
+        self.__spinCThreshold = self.builder.get_object("spin_CorrThreshold")
+        self.__spinCThreshold.set_value(self.__preferences['corrThreshold'])
         self.__spinFireDelay = self.builder.get_object("spin_FireDelay")
         self.__spinFireDelay.set_value(self.__preferences['fireDelay'])
         self.__spinPhotoDelay = self.builder.get_object("spin_PhotoDelay")
         self.__spinPhotoDelay.set_value(self.__preferences['photoDelay'])
-        self.__spinError = self.builder.get_object("spin_Error")
-        self.__spinError.set_value(self.__preferences['Error'])
         self.__filechooserOutput = self.builder.get_object("filechooser_output")
         self.__filechooserOutput.set_filename(self.__preferences['outputDir'])
         
         self.__comboAccRange = self.builder.get_object("combobox_AccRange")
-        self.__liststoreAccRange = gtk.ListStore(str, int)
+        self.__liststoreAccRange = gtk.ListStore(str, float)
         for l in self.__ranges:
             self.__liststoreAccRange.append(l)
         self.__comboAccRange.set_model(self.__liststoreAccRange)
@@ -73,6 +78,15 @@ class PreferencesXratersDialog(gtk.Dialog):
         self.__comboAccRange.pack_start(rend)
         self.__comboAccRange.add_attribute(rend, "text", 0)
         self.__comboAccRange.set_active(self.__preferences['accRangeIndex'])
+        
+        self.__comboBoxAxix = self.builder.get_object("combobox_Axis")
+        self.__liststoreAxis = gtk.ListStore(str, int)
+        [self.__liststoreAxis.append(l) for l in self.__Axes]
+        self.__comboBoxAxix.set_model(self.__liststoreAxis)
+        rend2 = gtk.CellRendererText()
+        self.__comboBoxAxix.pack_start(rend2)
+        self.__comboBoxAxix.add_attribute(rend2, "text", 0)
+        self.__comboBoxAxix.set_active(self.__preferences['Axis'])
 
     def get_preferences(self):
         """get_preferences  -returns a dictionary object that contain
@@ -91,9 +105,10 @@ class PreferencesXratersDialog(gtk.Dialog):
         #default preferences that will be overwritten if some are saved
         self.__preferences = {"record_type":self.__record_type,
                               "wiiAddress": "00:17:AB:39:49:98",
+                              "Axis": cwiid.X,
+                              "corrThreshold": 0.50,
                               "fireDelay": 10,
                               "photoDelay": 10,
-                              "Error": 10,
                               "outputDir": ".",
                               "accRange": 1,
                               "accRangeIndex": 0}
@@ -109,7 +124,6 @@ class PreferencesXratersDialog(gtk.Dialog):
             self.__key = results.rows[0].value["_id"]
             
         
-        
     def __save_preferences(self):
         self.__database.update_fields(self.__key, self.__preferences)
 
@@ -121,11 +135,13 @@ class PreferencesXratersDialog(gtk.Dialog):
         #make any updates to self.__preferences here
         #self.__preferences["preference1"] = "value2"
                 
-        self.__preferences['wiiAddress'] = self.__entryWiiAddress.get_text();
-        self.__preferences['fireDelay'] = self.__spinFireDelay.get_value_as_int();
-        self.__preferences['photoDelay'] = self.__spinPhotoDelay.get_value_as_int();
-        self.__preferences['Error'] = self.__spinError.get_value_as_int();
-        self.__preferences['outputDir'] = self.__filechooserOutput.get_filename();
+        self.__preferences['wiiAddress'] = self.__entryWiiAddress.get_text()
+        self.__preferences['corrThreshold'] = self.__spinCThreshold.get_value()
+        index = self.__comboBoxAxix.get_active()
+        self.__preferences['Axis'] = self.__liststoreAxis[index][1]
+        self.__preferences['fireDelay'] = self.__spinFireDelay.get_value_as_int()
+        self.__preferences['photoDelay'] = self.__spinPhotoDelay.get_value_as_int()
+        self.__preferences['outputDir'] = self.__filechooserOutput.get_filename()
         index = self.__comboAccRange.get_active()
         self.__preferences['accRange'] = self.__liststoreAccRange[index][1]
         self.__preferences['accRangeIndex'] = index

@@ -82,6 +82,15 @@
                       </object>
                     </child>
                     <child>
+                      <object class="GtkImageMenuItem" id="menuitem5">
+                        <property name="visible">True</property>
+                        <property name="related_action">actionReset</property>
+                        <property name="use_action_appearance">True</property>
+                        <property name="use_stock">True</property>
+                        <property name="always_show_image">True</property>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkSeparatorMenuItem" id="separatormenuitem2">
                         <property name="visible">True</property>
                       </object>
@@ -202,6 +211,19 @@
                 <property name="homogeneous">True</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkToolButton" id="toolbutton4">
+                <property name="visible">True</property>
+                <property name="related_action">actionReset</property>
+                <property name="use_action_appearance">True</property>
+                <property name="label" translatable="yes">toolbutton4</property>
+                <property name="use_underline">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="homogeneous">True</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -290,5 +312,14 @@
     <property name="is_important">True</property>
     <property name="sensitive">False</property>
     <signal name="activate" handler="on_Disarm"/>
+  </object>
+  <object class="GtkAction" id="actionReset">
+    <property name="label">_Reset</property>
+    <property name="short_label">_Reset</property>
+    <property name="stock_id">gtk-refresh</property>
+    <property name="is_important">True</property>
+    <property name="sensitive">False</property>
+    <property name="always_show_image">True</property>
+    <signal name="activate" handler="on_Reset"/>
   </object>
 </interface>
