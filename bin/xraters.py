@@ -82,6 +82,7 @@ class XratersWindow(gtk.Window):
             self.widget('actionSave').set_sensitive(True)
             self.widget('actionArm').set_sensitive(True)
             self.widget('actionReset').set_sensitive(True)
+            self.widget('actionPause').set_sensitive(True)
             self.widget('toolbutton1').set_related_action(self.widget('actionDisconnect'))
             self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
             self._wiiMote.mesg_callback = self._getAcc
@@ -95,6 +96,8 @@ class XratersWindow(gtk.Window):
         self.__background = self._accCanvas.copy_from_bbox(self._accAxis.bbox)
     
     def _getAcc(self, messages, theTime=0):
+        if self._Paused:
+            return
         for msg in messages:
             if msg[0] == cwiid.MESG_ACC:
                 # Normalize data using calibration info from the controller
@@ -123,10 +126,10 @@ class XratersWindow(gtk.Window):
 
     @callback
     def _drawAcc(self):
+        if self._Paused or len(self._time)==0:
+            return
         draw_flag = False
         lims = self._accAxis.get_xlim()
-        if len(self._time)==0:
-            return
         if self._time[-1] > lims[1]:
             self._accAxis.set_xlim(lims[0], lims[1]+2)
             lims = self._accAxis.get_xlim()
@@ -169,6 +172,7 @@ class XratersWindow(gtk.Window):
         self._moving = False
         self._draw = False
         self._moveTime = self._startTime
+        self._Paused = False
         
     def widget(self, name):
         return self.builder.get_object(name)
@@ -196,6 +200,9 @@ class XratersWindow(gtk.Window):
                                          self._time, self._accData[Y],
                                          self._time, self._accData[Z], 
                                          animated=True)
+        self._accFigure.legend(self._lines, ("X", "Y", "Z"), 
+                             'upper center', 
+                             ncol=3)
         self._accAxis.set_xlim(0, 2)
         self._accAxis.set_ylim(-self.preferences['accRange'], 
                                 self.preferences['accRange'])
@@ -255,6 +262,7 @@ class XratersWindow(gtk.Window):
         self.widget('actionWiiConnect').set_sensitive(True)
         self.widget('actionReset').set_sensitive(False)
         self.widget('actionArm').set_sensitive(False)
+        self.widget('actionPause').set_sensitive(False)
         self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
         self.widget('toolbutton1').set_related_action(self.widget('actionWiiConnect'))
         self.widget('actionSave').set_sensitive(True)
@@ -280,6 +288,13 @@ class XratersWindow(gtk.Window):
         self._accAxis.set_xlim(0, 2)
         gobject.idle_add(self._accCanvas.draw)
         self.on_Disarm(widget, data)
+        
+    def on_Pause(self, widge, data=None):
+        if not self._Paused:
+            self.widget('actionPause').set_short_label("Un_pause")
+        else:
+            self.widget('actionPause').set_short_label("_Pause")
+        self._Paused = not (self._Paused)        
 
     def save(self, widget, data=None):
         fileName = os.sep.join([self.preferences['outputDir'], 

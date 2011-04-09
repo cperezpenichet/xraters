@@ -66,11 +66,21 @@
                     <property name="visible">True</property>
                     <property name="ubuntu_local">True</property>
                     <child>
+                      <object class="GtkImageMenuItem" id="menuitem6">
+                        <property name="visible">True</property>
+                        <property name="related_action">actionPause</property>
+                        <property name="use_action_appearance">True</property>
+                        <property name="use_stock">True</property>
+                        <accelerator key="space" signal="activate"/>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkImageMenuItem" id="menuitem2">
                         <property name="visible">True</property>
                         <property name="related_action">actionArm</property>
                         <property name="use_action_appearance">True</property>
                         <property name="use_stock">True</property>
+                        <accelerator key="a" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                     <child>
@@ -79,6 +89,7 @@
                         <property name="related_action">actionDisarm</property>
                         <property name="use_action_appearance">True</property>
                         <property name="use_stock">True</property>
+                        <accelerator key="a" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                     <child>
@@ -88,6 +99,7 @@
                         <property name="use_action_appearance">True</property>
                         <property name="use_stock">True</property>
                         <property name="always_show_image">True</property>
+                        <accelerator key="r" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                     <child>
@@ -224,6 +236,19 @@
                 <property name="homogeneous">True</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkToolButton" id="toolbutton5">
+                <property name="visible">True</property>
+                <property name="related_action">actionPause</property>
+                <property name="use_action_appearance">True</property>
+                <property name="label" translatable="yes">toolbutton5</property>
+                <property name="use_underline">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="homogeneous">True</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -321,5 +346,14 @@
     <property name="sensitive">False</property>
     <property name="always_show_image">True</property>
     <signal name="activate" handler="on_Reset"/>
+  </object>
+  <object class="GtkAction" id="actionPause">
+    <property name="label">_Pause</property>
+    <property name="short_label">_Pause</property>
+    <property name="stock_id">gtk-media-pause</property>
+    <property name="is_important">True</property>
+    <property name="sensitive">False</property>
+    <property name="always_show_image">True</property>
+    <signal name="activate" handler="on_Pause"/>
   </object>
 </interface>
