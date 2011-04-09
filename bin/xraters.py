@@ -53,8 +53,8 @@ class XratersWindow(gtk.Window):
         self._PATTERN = 17 * [1]
         self._PATTERN.extend(17 * [-1])
         
-        self._acc_cal = ((128, 128, 128),
-                         (255, 255, 255))
+        self._acc_cal = ((510, 486, 515),
+                         (729, 705, 722))
         self._acc = [0, 0, 0]
         self._connected = False
         self._wiiMote = None
@@ -99,7 +99,10 @@ class XratersWindow(gtk.Window):
             if msg[0] == cwiid.MESG_ACC:
                 # Normalize data using calibration info from the controller
                 for i, axisAcc in enumerate(msg[1]):
-                    self._acc[i] = float(axisAcc-self._acc_cal[0][i])/(self._acc_cal[1][i]-self._acc_cal[0][i])
+                    self._acc[i] = float(axisAcc-self._acc_cal[0][i])
+                    self._acc[i] /=(self._acc_cal[1][i]\
+                                    -self._acc_cal[0][i])
+                    self._acc[i] /= 1.5
                     self._acc[i] *= self.preferences['accRange']
                 with self._dataLock:
                     self._time.append(theTime-self._startTime)
@@ -232,6 +235,8 @@ class XratersWindow(gtk.Window):
     def on_destroy(self, widget, data=None):
         """on_destroy - called when the XratersWindow is close. """
         #clean up code for saving application state should be added here
+        if self.isConnected:
+            self.on_wiiDisconnect(widget, data)
         gtk.main_quit()
         
     def on_wiiConnect(self, widget, data=None):
