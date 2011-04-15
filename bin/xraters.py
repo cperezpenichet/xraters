@@ -64,6 +64,11 @@ class XratersWindow(gtk.Window):
     isConnected = property(lambda self: self._connected)
     
     def callback(funct):
+        """A decorator used to require connection to the Wii Remote
+        
+        This decorator is used to implement the precondition that 
+        the Wii Remote must be connected. 
+        """
         def _callback(cls, *args, **kwds):
             if cls.isConnected:
                 funct(cls, *args, **kwds)
@@ -73,6 +78,8 @@ class XratersWindow(gtk.Window):
         return _callback
     
     def _connectCallback(self, connectionMaker):
+        """Callback function called upon successful connection to the Wiimote
+        """
         if connectionMaker.connected:
             self._connected = True
             self._wiiMote = connectionMaker.wiiMote
@@ -93,14 +100,20 @@ class XratersWindow(gtk.Window):
             
     @callback
     def _upd_background(self, event):
+        """Keep a copy of the figure background
+        """
         self.__background = self._accCanvas.copy_from_bbox(self._accAxis.bbox)
     
     def _getAcc(self, messages, theTime=0):
+        """Process acceleration messages from the Wiimote
+        
+        This function is intended to be set as cwiid.mesg_callback
+        """
         if self._Paused:
             return
         for msg in messages:
             if msg[0] == cwiid.MESG_ACC:
-                # Normalize data using calibration info from the controller
+                # Normalize data using calibration info
                 for i, axisAcc in enumerate(msg[1]):
                     self._acc[i] = float(axisAcc-self._acc_cal[0][i])
                     self._acc[i] /=(self._acc_cal[1][i]\
@@ -108,27 +121,38 @@ class XratersWindow(gtk.Window):
                     self._acc[i] /= 1.5
                     self._acc[i] *= self.preferences['accRange']
                 with self._dataLock:
+                    # Store time and acceleration in the respective arrays
                     self._time.append(theTime-self._startTime)
                     [self._accData[i].append(self._acc[i]) for i in threeAxes]
+                    # Compute correlation function
                     l = len(self._accData[self.preferences['Axis']])
                     c = abs(correlate(self._PATTERN, 
-                                  self._accData[self.preferences['Axis']][l-len(self._PATTERN):l])[-1])
+                            self._accData[self.preferences['Axis']][l-len(self._PATTERN):l])[-1])
+                    # If correlation is above threshold mark the time and
+                    # start the experiment
                     if (not self._moving) and self._armed and \
                         (c > self.preferences['corrThreshold']):
                         self._moveTime = self._time[-1]
                         self._moving = True
+                # We only keep about 6 seconds worth of data if the experiment
+                # has not started but keep everything after the fall starts.
                 if (self._time[-1] - self._time[0] > 6) and \
                     ((not self._draw) or \
-                     (self._draw and (self._moveTime - self._time[0] > 2))):
+                    ((self._moveTime - self._time[0] > 2))):
                     with self._dataLock:
                         self._time.pop(0)
                         [self._accData[i].pop(0) for i in threeAxes]
 
     @callback
     def _drawAcc(self):
+        """Update the acceleration graph
+        
+        """
+        # Do nothing while paused or there's no data available
         if self._Paused or len(self._time)==0:
             return
         draw_flag = False
+        # Update axes limits if the data fall out of range 
         lims = self._accAxis.get_xlim()
         if self._time[-1] > lims[1]:
             self._accAxis.set_xlim(lims[0], lims[1]+2)
@@ -139,6 +163,7 @@ class XratersWindow(gtk.Window):
              (self._draw and (self._moveTime - lims[0] > 2))):
             self._accAxis.set_xlim(lims[0]+2, lims[1])
             draw_flag = True
+        # Mark the start of the experiment with a vertical line
         if (not self._draw) and self._moving:
             self._draw = True
             self._vline = self._accAxis.axvline(self._moveTime, color="k", 
@@ -146,8 +171,10 @@ class XratersWindow(gtk.Window):
             draw_flag = True
         if draw_flag:
             gobject.idle_add(self._accCanvas.draw)
+        # Do the actual update of the background
         if self.__background != None:
             self._accCanvas.restore_region(self.__background)
+        # Do the actual update of the lines
         with self._dataLock:
             [self._lines[i].set_data(self._time, self._accData[i]) for i in threeAxes]
         [self._accAxis.draw_artist(self._lines[i]) for i in threeAxes]
@@ -155,16 +182,25 @@ class XratersWindow(gtk.Window):
 
     @callback
     def _updBatteryLevel(self):
+        """Callback to update the battery indicator in the status bar
+        
+        """
         self._wiiMote.request_status()
         self._setBatteryIndicator(float(self._wiiMote.state['battery']) / 
                                   cwiid.BATTERY_MAX)
         
     def _setBatteryIndicator(self, level):
+        """Actually update the battery indicator in the status bar
+        
+        """
         progressBar = self.widget("progressbarBattery")
         progressBar.set_fraction(level)
         progressBar.set_text("Battery: %.0f%%" % (level * 100))
     
     def _resetData(self):
+        """Reset stored data and status flags to their defaults
+        
+        """
         self._accData = [list(), list(), list()]
         self._time = list()
         self._startTime = time.time()
@@ -175,6 +211,9 @@ class XratersWindow(gtk.Window):
         self._Paused = False
         
     def widget(self, name):
+        """Helper function to retrieve widget handlers
+        
+        """ 
         return self.builder.get_object(name)
 
     def finish_initializing(self, builder):
@@ -247,6 +286,9 @@ class XratersWindow(gtk.Window):
         gtk.main_quit()
         
     def on_wiiConnect(self, widget, data=None):
+        """Signal handler for the WiiConnect action
+        
+        """
         self.widget('actionWiiConnect').set_sensitive(False)
         connectionMaker = WiiConnectionMaker(self.preferences['wiiAddress'],
                                              self.widget("statusbar"),
@@ -256,6 +298,9 @@ class XratersWindow(gtk.Window):
         connectionMaker.start()
         
     def on_wiiDisconnect(self, widget, data=None):
+        """Signal handler for the WiiDisconnect action
+        
+        """
         self._wiiMote.close()
         self._connected = False
         self.widget('actionDisconnect').set_sensitive(False)
@@ -270,18 +315,27 @@ class XratersWindow(gtk.Window):
         self._setBatteryIndicator(0)
         
     def on_Arm(self, widget, data=None):
+        """Signal handler for the arm action
+        
+        """
         self.widget('actionArm').set_sensitive(False)
         self.widget('actionDisarm').set_sensitive(True)
         self.widget('toolbutton3').set_related_action(self.widget('actionDisarm'))
         self._armed = True
         
     def on_Disarm(self, widget, data=None):
+        """Signal handler for the disarm action
+        
+        """
         self.widget('actionArm').set_sensitive(True)
         self.widget('actionDisarm').set_sensitive(False)
         self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
         self._armed = False
         
     def on_Reset(self, widget, data=None):
+        """Signal handler for the reset action
+        
+        """
         if self._draw:
             self._vline.remove()
         self._resetData()
@@ -290,6 +344,9 @@ class XratersWindow(gtk.Window):
         self.on_Disarm(widget, data)
         
     def on_Pause(self, widge, data=None):
+        """Signal handler for the pause action
+        
+        """
         if not self._Paused:
             self.widget('actionPause').set_short_label("Un_pause")
         else:
@@ -297,13 +354,15 @@ class XratersWindow(gtk.Window):
         self._Paused = not (self._Paused)        
 
     def save(self, widget, data=None):
+        """Signal handler for the save action
+        
+        """
         fileName = os.sep.join([self.preferences['outputDir'], 
                                 "acceleration_" + 
                                 time.strftime("%Y-%m-%d_%H-%M-%S") + 
                                 ".dat"]) 
         try:
             with open(fileName, 'wb') as outFile:
-                #TODO Display a real save dialog.
                 writer = csv.writer(outFile, 'excel-tab')
                 outFile.write(writer.dialect.delimiter.join(("#time",
                                                           "Ax",
