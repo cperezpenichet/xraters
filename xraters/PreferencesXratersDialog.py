@@ -14,16 +14,6 @@ import sys
 class PreferencesXratersDialog(gtk.Dialog):
     __gtype_name__ = "PreferencesXratersDialog"
     prefernces = {}
-    __ranges = [["+-1.5g", 1.5],
-                ["+-2g", 2],
-                ["+-4g", 4],
-                ["+-6g", 6],
-                ]
-    
-    __Axes = [["X", cwiid.X],
-              ["Y", cwiid.Y],
-              ["Z", cwiid.Z],
-              ]
 
     def __init__(self):
         """__init__ - This function is typically not called directly.
@@ -60,34 +50,9 @@ class PreferencesXratersDialog(gtk.Dialog):
         
         self.__entryWiiAddress = self.builder.get_object("entry_WiiAddress")
         self.__entryWiiAddress.set_text(self.__preferences['wiiAddress'])
-        self.__spinCThreshold = self.builder.get_object("spin_CorrThreshold")
-        self.__spinCThreshold.set_value(self.__preferences['corrThreshold'])
-        self.__spinFireDelay = self.builder.get_object("spin_FireDelay")
-        self.__spinFireDelay.set_value(self.__preferences['fireDelay'])
-        self.__spinPhotoDelay = self.builder.get_object("spin_PhotoDelay")
-        self.__spinPhotoDelay.set_value(self.__preferences['photoDelay'])
         self.__filechooserOutput = self.builder.get_object("filechooser_output")
         self.__filechooserOutput.set_filename(self.__preferences['outputDir'])
         
-        self.__comboAccRange = self.builder.get_object("combobox_AccRange")
-        self.__liststoreAccRange = gtk.ListStore(str, float)
-        for l in self.__ranges:
-            self.__liststoreAccRange.append(l)
-        self.__comboAccRange.set_model(self.__liststoreAccRange)
-        rend = gtk.CellRendererText()
-        self.__comboAccRange.pack_start(rend)
-        self.__comboAccRange.add_attribute(rend, "text", 0)
-        self.__comboAccRange.set_active(self.__preferences['accRangeIndex'])
-        
-        self.__comboBoxAxix = self.builder.get_object("combobox_Axis")
-        self.__liststoreAxis = gtk.ListStore(str, int)
-        [self.__liststoreAxis.append(l) for l in self.__Axes]
-        self.__comboBoxAxix.set_model(self.__liststoreAxis)
-        rend2 = gtk.CellRendererText()
-        self.__comboBoxAxix.pack_start(rend2)
-        self.__comboBoxAxix.add_attribute(rend2, "text", 0)
-        self.__comboBoxAxix.set_active(self.__preferences['Axis'])
-
     def get_preferences(self):
         """get_preferences  -returns a dictionary object that contain
         preferences for xraters. Creates a couchdb record if
@@ -105,13 +70,8 @@ class PreferencesXratersDialog(gtk.Dialog):
         #default preferences that will be overwritten if some are saved
         self.__preferences = {"record_type":self.__record_type,
                               "wiiAddress": "00:17:AB:39:49:98",
-                              "Axis": cwiid.X,
-                              "corrThreshold": 0.50,
-                              "fireDelay": 10,
-                              "photoDelay": 10,
                               "outputDir": ".",
-                              "accRange": 1,
-                              "accRangeIndex": 0}
+                             }
         
         results = self.__database.get_records(record_type=self.__record_type, create_view=True)
        
@@ -136,15 +96,7 @@ class PreferencesXratersDialog(gtk.Dialog):
         #self.__preferences["preference1"] = "value2"
                 
         self.__preferences['wiiAddress'] = self.__entryWiiAddress.get_text()
-        self.__preferences['corrThreshold'] = self.__spinCThreshold.get_value()
-        index = self.__comboBoxAxix.get_active()
-        self.__preferences['Axis'] = self.__liststoreAxis[index][1]
-        self.__preferences['fireDelay'] = self.__spinFireDelay.get_value_as_int()
-        self.__preferences['photoDelay'] = self.__spinPhotoDelay.get_value_as_int()
         self.__preferences['outputDir'] = self.__filechooserOutput.get_filename()
-        index = self.__comboAccRange.get_active()
-        self.__preferences['accRange'] = self.__liststoreAccRange[index][1]
-        self.__preferences['accRangeIndex'] = index
         self.__save_preferences()
 
     def cancel(self, widget, data=None):

@@ -87,11 +87,9 @@ class XratersWindow(gtk.Window):
             gobject.timeout_add(45, self._drawAcc)
             self.widget('actionDisconnect').set_sensitive(True)
             self.widget('actionSave').set_sensitive(True)
-            self.widget('actionArm').set_sensitive(True)
             self.widget('actionReset').set_sensitive(True)
             self.widget('actionPause').set_sensitive(True)
             self.widget('toolbutton1').set_related_action(self.widget('actionDisconnect'))
-            self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
             self._wiiMote.mesg_callback = self._getAcc
             self._updBatteryLevel()
             gobject.timeout_add_seconds(60, self._updBatteryLevel)
@@ -118,27 +116,12 @@ class XratersWindow(gtk.Window):
                     self._acc[i] = float(axisAcc-self._acc_cal[0][i])
                     self._acc[i] /=(self._acc_cal[1][i]\
                                     -self._acc_cal[0][i])
-                    self._acc[i] /= 1.5
-                    self._acc[i] *= self.preferences['accRange']
                 with self._dataLock:
                     # Store time and acceleration in the respective arrays
                     self._time.append(theTime-self._startTime)
                     [self._accData[i].append(self._acc[i]) for i in threeAxes]
-                    # Compute correlation function
-                    l = len(self._accData[self.preferences['Axis']])
-                    c = abs(correlate(self._PATTERN, 
-                            self._accData[self.preferences['Axis']][l-len(self._PATTERN):l])[-1])
-                    # If correlation is above threshold mark the time and
-                    # start the experiment
-                    if (not self._moving) and self._armed and \
-                        (c > self.preferences['corrThreshold']):
-                        self._moveTime = self._time[-1]
-                        self._moving = True
-                # We only keep about 6 seconds worth of data if the experiment
-                # has not started but keep everything after the fall starts.
-                if (self._time[-1] - self._time[0] > 6) and \
-                    ((not self._draw) or \
-                    ((self._moveTime - self._time[0] > 2))):
+                # We only keep about 6 seconds worth of data
+                if (self._time[-1] - self._time[0] > 6):
                     with self._dataLock:
                         self._time.pop(0)
                         [self._accData[i].pop(0) for i in threeAxes]
@@ -158,16 +141,8 @@ class XratersWindow(gtk.Window):
             self._accAxis.set_xlim(lims[0], lims[1]+2)
             lims = self._accAxis.get_xlim()
             draw_flag = True
-        if (self._time[-1] - lims[0] > 6) and \
-            ((not self._draw) or \
-             (self._draw and (self._moveTime - lims[0] > 2))):
+        if (self._time[-1] - lims[0] > 6):
             self._accAxis.set_xlim(lims[0]+2, lims[1])
-            draw_flag = True
-        # Mark the start of the experiment with a vertical line
-        if (not self._draw) and self._moving:
-            self._draw = True
-            self._vline = self._accAxis.axvline(self._moveTime, color="k", 
-                                                                linestyle="--")
             draw_flag = True
         if draw_flag:
             gobject.idle_add(self._accCanvas.draw)
@@ -204,9 +179,6 @@ class XratersWindow(gtk.Window):
         self._accData = [list(), list(), list()]
         self._time = list()
         self._startTime = time.time()
-        self._armed = False
-        self._moving = False
-        self._draw = False
         self._moveTime = self._startTime
         self._Paused = False
         
@@ -234,7 +206,7 @@ class XratersWindow(gtk.Window):
         self._accFigure = Figure(figsize=(8,6), dpi=72)
         self._accAxis = self._accFigure.add_subplot(111)
         self._accAxis.set_xlabel("time (s)")
-        self._accAxis.set_ylabel("gravity (g)")
+        self._accAxis.set_ylabel("acceleration (g)")
         self._lines = self._accAxis.plot(self._time, self._accData[X],
                                          self._time, self._accData[Y],
                                          self._time, self._accData[Z], 
@@ -243,8 +215,7 @@ class XratersWindow(gtk.Window):
                              'upper center', 
                              ncol=3)
         self._accAxis.set_xlim(0, 2)
-        self._accAxis.set_ylim(-self.preferences['accRange'], 
-                                self.preferences['accRange'])
+        self._accAxis.set_ylim(-3, 3)
         self._accCanvas = FigureCanvas(self._accFigure)
         self._accCanvas.mpl_connect("draw_event", self._upd_background)
         self.__background = self._accCanvas.copy_from_bbox(self._accAxis.bbox)
@@ -269,9 +240,6 @@ class XratersWindow(gtk.Window):
         if response == gtk.RESPONSE_OK:
             #make any updates based on changed preferences here
             self.preferences = prefs.get_preferences()
-            self._accAxis.set_ylim(-self.preferences['accRange'], 
-                                    self.preferences['accRange'])
-            self._accCanvas.draw()
         prefs.destroy()
 
     def quit(self, widget, data=None):
@@ -306,42 +274,19 @@ class XratersWindow(gtk.Window):
         self.widget('actionDisconnect').set_sensitive(False)
         self.widget('actionWiiConnect').set_sensitive(True)
         self.widget('actionReset').set_sensitive(False)
-        self.widget('actionArm').set_sensitive(False)
         self.widget('actionPause').set_sensitive(False)
-        self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
         self.widget('toolbutton1').set_related_action(self.widget('actionWiiConnect'))
         self.widget('actionSave').set_sensitive(True)
         self.widget('statusbar').pop(self.widget("statusbar").get_context_id(''))
         self._setBatteryIndicator(0)
         
-    def on_Arm(self, widget, data=None):
-        """Signal handler for the arm action
-        
-        """
-        self.widget('actionArm').set_sensitive(False)
-        self.widget('actionDisarm').set_sensitive(True)
-        self.widget('toolbutton3').set_related_action(self.widget('actionDisarm'))
-        self._armed = True
-        
-    def on_Disarm(self, widget, data=None):
-        """Signal handler for the disarm action
-        
-        """
-        self.widget('actionArm').set_sensitive(True)
-        self.widget('actionDisarm').set_sensitive(False)
-        self.widget('toolbutton3').set_related_action(self.widget('actionArm'))
-        self._armed = False
-        
     def on_Reset(self, widget, data=None):
         """Signal handler for the reset action
         
         """
-        if self._draw:
-            self._vline.remove()
         self._resetData()
         self._accAxis.set_xlim(0, 2)
         gobject.idle_add(self._accCanvas.draw)
-        self.on_Disarm(widget, data)
         
     def on_Pause(self, widge, data=None):
         """Signal handler for the pause action
