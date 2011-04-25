@@ -50,11 +50,8 @@ class XratersWindow(gtk.Window):
         XratersWindow object.
 
         """
-        self._PATTERN = 17 * [1]
-        self._PATTERN.extend(17 * [-1])
-        
-        self._acc_cal = ((510, 486, 515),
-                         (729, 705, 722))
+        self._acc_cal = ((128, 128, 128),
+                         (255, 255, 255))
         self._acc = [0, 0, 0]
         self._connected = False
         self._wiiMote = None
@@ -90,6 +87,7 @@ class XratersWindow(gtk.Window):
             self.widget('actionReset').set_sensitive(True)
             self.widget('actionPause').set_sensitive(True)
             self.widget('toolbutton1').set_related_action(self.widget('actionDisconnect'))
+            self._acc_cal = connectionMaker.acc_cal
             self._wiiMote.mesg_callback = self._getAcc
             self._updBatteryLevel()
             gobject.timeout_add_seconds(60, self._updBatteryLevel)
